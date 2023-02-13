@@ -1,5 +1,6 @@
 import os
 import tweepy
+import threading
 from dotenv import load_dotenv
 
 load_dotenv()  # take environment variables from .env.
@@ -9,6 +10,13 @@ consumer_key = os.getenv("CONSUMER_KEY")
 consumer_secret = os.getenv("CONSUMER_SECRET")
 twitter_id = os.getenv("TWITTER_ID")
 callback = os.getenv("CALLBACK")
+
+
+def unfollow_user(c, target_id):
+    r = c.unfollow_user(target_id)
+    if not r.data['following']:
+        print("unfollow ", target_id)
+
 
 client = tweepy.Client(bearer_token=bearer_token)
 
@@ -36,5 +44,5 @@ client = tweepy.Client(
 )
 
 for user_id in following_id_list[0:50]:
-    response = client.unfollow_user(user_id)
-    print(response)
+    t = threading.Thread(target=unfollow_user, args=(client, user_id))
+    t.start()
