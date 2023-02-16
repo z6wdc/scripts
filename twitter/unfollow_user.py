@@ -1,4 +1,5 @@
 import os
+import sys
 import tweepy
 import threading
 from dotenv import load_dotenv
@@ -12,18 +13,17 @@ twitter_id = os.getenv("TWITTER_ID")
 callback = os.getenv("CALLBACK")
 
 
-def unfollow_user(c, target_id):
-    r = c.unfollow_user(target_id)
+def unfollow_user(c, user):
+    r = c.unfollow_user(user.id)
     if not r.data['following']:
-        print("unfollow ", target_id)
+        print(f"unfollow {user.name}\n")
 
 
 client = tweepy.Client(bearer_token=bearer_token)
 
 response = client.get_users_following(twitter_id)
-following_id_list = []
-for user in response.data:
-    following_id_list.append(user.id)
+if len(response.data) == 0:
+    sys.exit("Did not get a following list")
 
 oauth1_user_handler = tweepy.OAuth1UserHandler(
     consumer_key=consumer_key,
@@ -43,6 +43,6 @@ client = tweepy.Client(
     access_token_secret=access_token_secret
 )
 
-for user_id in following_id_list[0:50]:
-    t = threading.Thread(target=unfollow_user, args=(client, user_id))
+for following_user in response.data[0:50]:
+    t = threading.Thread(target=unfollow_user, args=(client, following_user))
     t.start()
