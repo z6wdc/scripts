@@ -11,3 +11,7 @@
 ### twitter id
 
 check the `id_str` value by viewing source
+
+### rate limits
+
+- [rate limits](https://developer.twitter.com/ja/docs/twitter-api/rate-limits)
