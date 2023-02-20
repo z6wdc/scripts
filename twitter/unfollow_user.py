@@ -1,5 +1,7 @@
 import os
 import sys
+import time
+
 import tweepy
 import threading
 from dotenv import load_dotenv
@@ -43,6 +45,12 @@ client = tweepy.Client(
     access_token_secret=access_token_secret
 )
 
-for following_user in response.data[0:50]:
+size = len(response.data)
+
+for index, following_user in enumerate(response.data):
     t = threading.Thread(target=unfollow_user, args=(client, following_user))
     t.start()
+    if (index + 1) == size:
+        break
+    if (index + 1) % 50 == 0:
+        time.sleep(60 * 15 + 30)  # sleep 15.5 minutes after 50 calls
