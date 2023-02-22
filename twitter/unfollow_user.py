@@ -15,10 +15,13 @@ twitter_id = os.getenv("TWITTER_ID")
 callback = os.getenv("CALLBACK")
 
 
-def unfollow_user(c, user):
-    r = c.unfollow_user(user.id)
-    if not r.data['following']:
-        print(f"unfollow {user.name}\n")
+def unfollow_user(c, i, user):
+    try:
+        r = c.unfollow_user(user.id)
+        if not r.data['following']:
+            print(f"unfollow {i}th user: {user.name}\n")
+    except tweepy.errors.TooManyRequests as e:
+        print('TooManyRequests')
 
 
 client = tweepy.Client(bearer_token=bearer_token)
@@ -46,11 +49,19 @@ client = tweepy.Client(
 )
 
 size = len(response.data)
+threads = []
 
 for index, following_user in enumerate(response.data):
-    t = threading.Thread(target=unfollow_user, args=(client, following_user))
+    t = threading.Thread(target=unfollow_user, args=(client, index + 1, following_user))
     t.start()
+    threads.append(t)
     if (index + 1) == size:
         break
     if (index + 1) % 50 == 0:
         time.sleep(60 * 15 + 30)  # sleep 15.5 minutes after 50 calls
+
+for thread in threads:
+    thread.join()
+
+print("finish")
+sys.exit()
