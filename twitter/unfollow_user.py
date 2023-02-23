@@ -4,6 +4,7 @@ import time
 
 import tweepy
 import threading
+from queue import Queue
 from dotenv import load_dotenv
 
 load_dotenv()  # take environment variables from .env.
@@ -14,14 +15,16 @@ consumer_secret = os.getenv("CONSUMER_SECRET")
 twitter_id = os.getenv("TWITTER_ID")
 callback = os.getenv("CALLBACK")
 
+STATUS_429 = 'TooManyRequests'
+
 
 def unfollow_user(c, i, user):
     try:
         r = c.unfollow_user(user.id)
         if not r.data['following']:
-            print(f"unfollow {i}th user: {user.name}\n")
-    except tweepy.errors.TooManyRequests as e:
-        print('TooManyRequests')
+            q.put(f"unfollow {i}th user: {user.name}\n")
+    except tweepy.errors.TooManyRequests:
+        q.put(STATUS_429)
 
 
 client = tweepy.Client(bearer_token=bearer_token)
@@ -48,20 +51,45 @@ client = tweepy.Client(
     access_token_secret=access_token_secret
 )
 
-size = len(response.data)
+q = Queue()
 threads = []
+results = []
+size = len(response.data)
 
-for index, following_user in enumerate(response.data):
-    t = threading.Thread(target=unfollow_user, args=(client, index + 1, following_user))
+flag = False
+
+for index, following_user in enumerate(response.data, start=1):
+    t = threading.Thread(target=unfollow_user, args=(client, index, following_user))
     t.start()
     threads.append(t)
-    if (index + 1) == size:
-        break
-    if (index + 1) % 50 == 0:
-        time.sleep(60 * 15 + 30)  # sleep 15.5 minutes after 50 calls
 
-for thread in threads:
-    thread.join()
+    if index % 50 == 0 or index == size:
+        for thread in threads:
+            if thread.is_alive():
+                thread.join()
+
+        for item in q.queue:
+            if item == STATUS_429:
+                flag = True
+            else:
+                results.append(item)
+
+        threads.clear()
+        results.sort()
+        for result in results:
+            print(result)
+
+        if flag:
+            print(STATUS_429)
+            break
+
+        if index == size:
+            break
+
+        with q.mutex:
+            q.queue.clear()
+        print("wait 15.5 minutes after 50 calls")
+        time.sleep(60 * 15 + 30)
 
 print("finish")
 sys.exit()
